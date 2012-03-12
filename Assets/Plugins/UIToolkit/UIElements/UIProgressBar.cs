@@ -4,91 +4,86 @@ using System;
 
 public class UIProgressBar : UISprite
 {
-	public bool resizeTextureOnChange = false;
 	public bool rightToLeft;
 	
 	private float _value = 0;
-	private UISprite _bar;
 	private float _barOriginalWidth;
 	private UIUVRect _barOriginalUVframe;
+	private bool _resizeTextureOnChange = false;
 	
 	
-	
-	public static UIProgressBar create( string barFilename, string borderFilename, int barxPos, int baryPos, int borderxPos, int borderyPos )
+	public static UIProgressBar create( string barFilename, int xPos, int yPos )
 	{
-		return create( UI.firstToolkit, barFilename, borderFilename, barxPos, baryPos, borderxPos, borderyPos, false );
+		return create( UI.firstToolkit, barFilename, xPos, yPos, false, 1 );
 	}
 
 
-	public static UIProgressBar create( string barFilename, string borderFilename, int barxPos, int baryPos, int borderxPos, int borderyPos, bool rightToLeft )
+	public static UIProgressBar create( UIToolkit manager, string barFilename, int xPos, int yPos, bool rightToLeft, int depth )
 	{
-		return create( UI.firstToolkit, barFilename, borderFilename, barxPos, baryPos, borderxPos, borderyPos, rightToLeft );
-	}
-
-	
-	// the bars x/y coordinates should be relative to the borders
-	public static UIProgressBar create( UIToolkit manager, string barFilename, string borderFilename, int barxPos, int baryPos, int borderxPos, int borderyPos, bool rightToLeft )
-	{
-		var borderTI = manager.textureInfoForFilename( borderFilename );
-	
-		var borderFrame = new Rect( borderxPos, borderyPos, borderTI.frame.width, borderTI.frame.height );
-		
-		UISprite bar;
+		var textureInfo = manager.textureInfoForFilename( barFilename );
+		var frame = new Rect( xPos, yPos, textureInfo.frame.width, textureInfo.frame.height );
 		
 		if( rightToLeft )
-			bar = manager.addSprite( barFilename, borderxPos - barxPos + ((int)borderTI.frame.width), borderyPos + baryPos, 2 );
-		else
-			bar = manager.addSprite( barFilename, borderxPos + barxPos, borderyPos + baryPos, 2 );
+			frame.x = xPos + (int)textureInfo.frame.width;
 
-		var progressBar = new UIProgressBar( manager, borderFrame, 1, borderTI.uvRect, bar );
-		progressBar.rightToLeft = rightToLeft;
+		var progressBar = new UIProgressBar( manager, frame, depth, textureInfo.uvRect, rightToLeft );
 		
 		return progressBar;
 	}
 	
 	
-	public UIProgressBar( UIToolkit manager, Rect frame, int depth, UIUVRect uvFrame, UISprite bar ):base( frame, depth, uvFrame )
+	public UIProgressBar( UIToolkit manager, Rect frame, int depth, UIUVRect uvFrame, bool rightToLeft ):base( frame, depth, uvFrame )
 	{
-		// Save the bar and make it a child of the container/border for organization purposes
-		_bar = bar;
-		_bar.parentUIObject = this;
+		manager.addSprite( this );
 		
 		// Save the bars original size
-		_barOriginalWidth = _bar.width;
-		_barOriginalUVframe = _bar.uvFrame;
-		
-		manager.addSprite( this );
+		_barOriginalWidth = frame.width;
+		_barOriginalUVframe = uvFrame;
+		this.rightToLeft = rightToLeft;
+
+		// Update the bar size based on the value
+		if( rightToLeft )
+			setSize( _value * -_barOriginalWidth, frame.height );
+		else
+			setSize( _value * _barOriginalWidth, frame.height );
 	}
 
 
-    public override bool hidden
+    public bool resizeTextureOnChange
     {
-        get { return ___hidden; }
+        get { return _resizeTextureOnChange; }
         set
         {
-            // No need to do anything if we're already in this state:
-            if( value == ___hidden )
-                return;
-			
-			base.hidden = value;
-			
-			// pass the call down to our bar
-			_bar.hidden = value;
+            if( _resizeTextureOnChange != value )
+            {
+                // Update the bar UV's if resizeTextureOnChange is set
+                if( value )
+                {
+                    UIUVRect newUVframe = _barOriginalUVframe;
+                    newUVframe.uvDimensions.x *= _value;
+                    uvFrame = newUVframe;
+                }
+                else // Set original uv if not
+                {
+                    uvFrame = _barOriginalUVframe;
+                }
+
+                // Update the bar size based on the value
+                if( rightToLeft )
+                    setSize( _value * -_barOriginalWidth, height );
+                else
+                    setSize( _value * _barOriginalWidth, height );
+
+                _resizeTextureOnChange = value;
+            }
         }
     }
 	
-	
-	public override void destroy()
-	{
-		_bar.destroy();
-		base.destroy();
-	}
 
 	// Current value of the progress bar.  Value is always between 0 and 1.
 	public float value
 	{
 		get { return _value; }
-		
 		set
 		{
 			if( value != _value )
@@ -102,17 +97,15 @@ public class UIProgressBar : UISprite
 					// Set the uvFrame's width based on the value
 					UIUVRect newUVframe = _barOriginalUVframe;
 					newUVframe.uvDimensions.x *= _value;
-					_bar.uvFrame = newUVframe;
+					uvFrame = newUVframe;
 				}
 
 				// Update the bar size based on the value
 				if( rightToLeft )
-					_bar.setSize( _value * -_barOriginalWidth, _bar.height );	
+					setSize( _value * -_barOriginalWidth, height );	
 				else
-					_bar.setSize( _value * _barOriginalWidth, _bar.height );
+					setSize( _value * _barOriginalWidth, height );
 			}
 		}
 	}
-
-	
 }

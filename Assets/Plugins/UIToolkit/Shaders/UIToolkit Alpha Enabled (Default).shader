@@ -10,11 +10,12 @@ Shader "UIToolkit/Alpha Enabled (Default)"
 	{
 		Tags { "Queue" = "Transparent" }
 		Blend SrcAlpha OneMinusSrcAlpha
-		AlphaTest Greater .05
+		AlphaTest Greater .01
 		ColorMask RGBA
 		Cull Off
 		Lighting Off
 		ZWrite On
+		Fog { Mode Off }
 		
 		BindChannels
 		{
@@ -23,7 +24,6 @@ Shader "UIToolkit/Alpha Enabled (Default)"
 			Bind "TexCoord", texcoord
 		}
 		
-
 		SubShader
 		{
 			Pass

@@ -20,7 +20,7 @@ public class TextManager : MonoBehaviour
 		// spawn new text instances showing off the relative positioning features by placing one text instance in each corner
 		// Uses default color, scale, alignment, and depth.
 		text1 = text.addTextInstance( "hello man.  I have a line\nbreak.", 0, 0 );
-        text1.pixelsFromTopLeft( 0, 0 );
+        text1.pixelsFromTop( 0, 0 );
 		
 
 		text2 = text.addTextInstance( "testing small bitmap fonts", 0, 0, 0.3f );
@@ -79,15 +79,15 @@ public class TextManager : MonoBehaviour
 		text2.setColorForAllLetters( Color.green );
 		
 		yield return new WaitForSeconds( 2.0f );
-		text3.clear();
+		text3.destroy();
 		
 		yield return new WaitForSeconds( 1.0f );
-		text4.clear();
-		text2.clear();
+		text4.destroy();
+		text2.destroy();
 		
 		yield return new WaitForSeconds( 1.0f );
-		textWrap1.clear();
-		textWrap2.clear();
+		textWrap1.destroy();
+		textWrap2.destroy();
 	}
 
 }

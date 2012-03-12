@@ -28,9 +28,10 @@ public class UISprite : UIObject, IPositionable
     public Vector3 v4 = new Vector3();
 
 	protected UIUVRect _uvFrame; // UV coordinates and size for the sprite
-	protected UIUVRect _uvFrameClipped; // alternate UV coordinatest for when a sprite it clipped
+	protected UIUVRect _uvFrameClipped; // alternate UV coordinates for when a sprite it clipped
 	protected bool _clipped; // set to true when the sprite is clipped so the clipped uvFrame is used
 	private float _clippedTopYOffset;
+	private float _clippedLeftXOffset;
 	
     protected Vector3[] meshVerts; // Pointer to the array of vertices in the mesh
     protected Vector2[] uvs; // Pointer to the array of UVs in the mesh
@@ -44,6 +45,11 @@ public class UISprite : UIObject, IPositionable
     public UISprite( Rect frame, int depth, UIUVRect uvFrame, bool gameObjectOriginInCenter ) : base()
     {
 		this.gameObjectOriginInCenter = gameObjectOriginInCenter;
+        if( gameObjectOriginInCenter )
+        {
+            _anchorInfo.OriginUIxAnchor = UIxAnchor.Center;
+            _anchorInfo.OriginUIyAnchor = UIyAnchor.Center;
+        }
 		
 		// Setup our GO
 		client.transform.position = new Vector3( frame.x, -frame.y, depth ); // Depth will affect z-index
@@ -81,7 +87,7 @@ public class UISprite : UIObject, IPositionable
 					var clippedWidth = _uvFrameClipped.getWidth( manager.textureSize );
 					var clippedHeight = _uvFrameClipped.getHeight( manager.textureSize );
 					
-					_uvFrameClipped = value.rectClippedToBounds( clippedWidth, clippedHeight, _uvFrameClipped.clippingTop, manager.textureSize );
+					_uvFrameClipped = value.rectClippedToBounds( clippedWidth, clippedHeight, _uvFrameClipped.clippingPlane, manager.textureSize );
 				}
 				
 				manager.updateUV( this );
@@ -135,8 +141,7 @@ public class UISprite : UIObject, IPositionable
 				return;
 			
 			_clipped = value;
-			if( _clipped )
-				_clippedTopYOffset = 0;
+			_clippedTopYOffset = _clippedLeftXOffset = 0;
 			
 			updateVertPositions();
 			manager.updateUV( this );
@@ -263,18 +268,18 @@ public class UISprite : UIObject, IPositionable
 		if( gameObjectOriginInCenter )
 		{
 			// Some objects need to rotate so we set the origin at the center of the GO
-			v1 = new Vector3( -width / 2, height / 2, 0 );   // Upper-left
-			v2 = new Vector3( -width / 2, -height / 2, 0 );  // Lower-left
-			v3 = new Vector3( width / 2, -height / 2, 0 );   // Lower-right
-			v4 = new Vector3( width / 2, height / 2, 0 );    // Upper-right
+			v1 = new Vector3( -width / 2 + _clippedLeftXOffset, height / 2 - _clippedTopYOffset, 0 );   // Upper-left
+			v2 = new Vector3( -width / 2 + _clippedLeftXOffset, -height / 2 - _clippedTopYOffset, 0 );  // Lower-left
+			v3 = new Vector3( width / 2 + _clippedLeftXOffset, -height / 2 - _clippedTopYOffset, 0 );   // Lower-right
+			v4 = new Vector3( width / 2 + _clippedLeftXOffset, height / 2 - _clippedTopYOffset, 0 );    // Upper-right
 		}
 		else
 		{
 			// Make the origin the top-left corner of the GO
-	        v1 = new Vector3( 0, 0, 0 );   // Upper-left
-	        v2 = new Vector3( 0, -height, 0 );  // Lower-left
-	        v3 = new Vector3( width, -height, 0 );   // Lower-right
-	        v4 = new Vector3( width, 0, 0 );    // Upper-right
+			v1 = new Vector3( _clippedLeftXOffset, -_clippedTopYOffset, 0 );   // Upper-left
+			v2 = new Vector3( _clippedLeftXOffset, -height - _clippedTopYOffset, 0 );  // Lower-left
+			v3 = new Vector3( width + _clippedLeftXOffset, -height - _clippedTopYOffset, 0 );   // Lower-right
+			v4 = new Vector3( width + _clippedLeftXOffset, -_clippedTopYOffset, 0 );    // Upper-right
 		}
 	}
 	
@@ -284,20 +289,37 @@ public class UISprite : UIObject, IPositionable
     /// the sprite should still have the same height/width for measuring even though it is clipped by another view.
     /// Note: setting this DOES NOT automatically set the sprite as clipped. Size should be set after uvFrameClipped!
     /// </summary>
-    public void setClippedSize( float width, float height, bool clippingTop )
+    public void setClippedSize( float width, float height, UIClippingPlane clippingPlane )
     {
-        _clippedWidth = width;
-        _clippedHeight = height;
+		_clippedWidth = width;
+		_clippedHeight = height;
 		
-		if( clippingTop )
-			_clippedTopYOffset = _height - _clippedHeight;
-		else
-			_clippedTopYOffset = 0;
-		
-		position = new Vector3( position.x, position.y - _clippedTopYOffset, position.z );
-		
+		switch( clippingPlane )
+		{
+			case UIClippingPlane.Left:
+			{
+				_clippedLeftXOffset = _width - _clippedWidth;
+				break;
+			}
+			case UIClippingPlane.Right:
+			{
+				_clippedLeftXOffset = 0;
+				break;
+			}
+			case UIClippingPlane.Top:
+			{
+				_clippedTopYOffset = _height - _clippedHeight;
+				break;
+			}
+			case UIClippingPlane.Bottom:
+			{
+				_clippedTopYOffset = 0;
+				break;
+			}
+		}
+
 		updateVertPositions();
-        updateTransform();
+		updateTransform();
 	}
 	
 
@@ -343,6 +365,7 @@ public class UISprite : UIObject, IPositionable
 		gameObjectOriginInCenter = true;
         _anchorInfo.OriginUIxAnchor = UIxAnchor.Center;
         _anchorInfo.OriginUIyAnchor = UIyAnchor.Center;
+
 		setSize( _width, _height );
 	}
 	

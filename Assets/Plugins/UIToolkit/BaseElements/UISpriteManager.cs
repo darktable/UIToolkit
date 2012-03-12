@@ -55,8 +55,9 @@ public class UISpriteManager : MonoBehaviour
 	protected int[] triIndices = new int[0];    // Indices into the vertex array
 	protected Vector2[] UVs = new Vector2[0];       // UV coordinates
 	protected Color[] colors = new Color[0];      // Color values
-
-	protected Dictionary<string, UITextureInfo> textureDetails; // texture details loaded from the TexturePacker config file
+	
+	[HideInInspector]
+	public Dictionary<string, UITextureInfo> textureDetails; // texture details loaded from the TexturePacker config file
 
 	#endregion;
 
@@ -67,7 +68,13 @@ public class UISpriteManager : MonoBehaviour
 	{
 		_meshFilter = gameObject.AddComponent<MeshFilter>();
 		_meshRenderer = gameObject.AddComponent<MeshRenderer>();
-
+		
+		// Duplicate the standard material so that we're not changing the
+		// supplied one - it may be used by more than one UIToolkit object
+		Material duplicateMaterial = new Material (material.shader);
+		duplicateMaterial.CopyPropertiesFromMaterial(material);
+		material = duplicateMaterial;
+		
 		_meshRenderer.renderer.material = material;
 		_mesh = _meshFilter.mesh;
 
@@ -90,7 +97,7 @@ public class UISpriteManager : MonoBehaviour
 
 		var texture = (Texture)Resources.Load(texturePackerConfigName, typeof(Texture));
 		if (texture == null)
-			Debug.Log("UI texture is being autoloaded and it doesnt exist.  Cannot find texturePackerConfigName: " + texturePackerConfigName);
+			Debug.Log("UI texture is being autoloaded and it doesn't exist.  Cannot find texturePackerConfigName: " + texturePackerConfigName);
 		material.SetTexture("_MainTex", texture);
 
 		// Cache our texture size
@@ -98,11 +105,11 @@ public class UISpriteManager : MonoBehaviour
 		textureSize = new Vector2(t.width, t.height);
 
 		// load up the config file
-		textureDetails = loadTexturesFromTexturePackerJSON(texturePackerConfigName);
+		textureDetails = loadTexturesFromTexturePackerJSON(texturePackerConfigName, textureSize);
 	}
 
 
-	private Dictionary<string, UITextureInfo> loadTexturesFromTexturePackerJSON(string filename)
+	public static Dictionary<string, UITextureInfo> loadTexturesFromTexturePackerJSON(string filename, Vector2 textureSize)
 	{
 		var textures = new Dictionary<string, UITextureInfo>();
 
@@ -112,29 +119,29 @@ public class UISpriteManager : MonoBehaviour
 
 		var jsonString = asset.text;
 		var decodedHash = jsonString.hashtableFromJson();
-		var frames = (Hashtable)decodedHash["frames"];
+		var frames = (IDictionary)decodedHash["frames"];
 
 		foreach (System.Collections.DictionaryEntry item in frames) {
 			// extract the info we need from the TexturePacker json file, mainly uvRect and size
-			var frame = (Hashtable)((Hashtable)item.Value)["frame"];
+			var frame = (IDictionary)((IDictionary)item.Value)["frame"];
 			var frameX = int.Parse(frame["x"].ToString());
 			var frameY = int.Parse(frame["y"].ToString());
 			var frameW = int.Parse(frame["w"].ToString());
 			var frameH = int.Parse(frame["h"].ToString());
 
 			// for trimming support
-			var spriteSourceSize = (Hashtable)((Hashtable)item.Value)["spriteSourceSize"];
+			var spriteSourceSize = (IDictionary)((IDictionary)item.Value)["spriteSourceSize"];
 			var spriteSourceSizeX = int.Parse(spriteSourceSize["x"].ToString());
 			var spriteSourceSizeY = int.Parse(spriteSourceSize["y"].ToString());
 			var spriteSourceSizeW = int.Parse(spriteSourceSize["w"].ToString());
 			var spriteSourceSizeH = int.Parse(spriteSourceSize["h"].ToString());
 
-			var sourceSize = (Hashtable)((Hashtable)item.Value)["sourceSize"];
+			var sourceSize = (IDictionary)((IDictionary)item.Value)["sourceSize"];
 			var sourceSizeX = int.Parse(sourceSize["w"].ToString());
 			var sourceSizeY = int.Parse(sourceSize["h"].ToString());
 
-			var trimmed = (bool)((Hashtable)item.Value)["trimmed"];
-			var rotated = (bool)((Hashtable)item.Value)["rotated"];
+			var trimmed = (bool)((IDictionary)item.Value)["trimmed"];
+			var rotated = (bool)((IDictionary)item.Value)["rotated"];
 
 			var ti = new UITextureInfo();
 			ti.frame = new Rect(frameX, frameY, frameW, frameH);
